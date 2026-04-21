@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>门店管理</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f6f7;
+            min-height: 100vh;
+        }
+        .header {
+            background: white;
+            padding: 16px 24px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .header h1 { font-size: 18px; color: #1f2329; }
+        .header .back { color: #3370ff; text-decoration: none; font-size: 14px; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 24px; }
+        .toolbar {
+            background: white;
+            border-radius: 8px;
+            padding: 16px 20px;
+            margin-bottom: 20px;
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .btn {
+            padding: 8px 16px;
+            border-radius: 6px;
+            border: 1px solid #dcdfe6;
+            background: white;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+        .btn:hover { border-color: #3370ff; color: #3370ff; }
+        .btn-primary {
+            background: #3370ff;
+            color: white;
+            border-color: #3370ff;
+        }
+        .btn-primary:hover { background: #296eff; }
+        .search-box {
+            flex: 1;
+            min-width: 200px;
+        }
+        .search-box input {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #dcdfe6;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+        .card-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        .store-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+            transition: all 0.2s;
+        }
+        .store-card:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        .store-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 16px;
+        }
+        .store-name {
+            font-size: 16px;
+            font-weight: 600;
+            color: #1f2329;
+        }
+        .store-no {
+            font-size: 12px;
+            color: #646a73;
+            margin-top: 4px;
+        }
+        .zone-tag {
+            display: inline-block;
+            padding: 4px 10px;
+            background: #e8f1ff;
+            color: #3370ff;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+        .store-info {
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid #e5e6eb;
+        }
+        .info-item {
+            display: flex;
+            margin-bottom: 8px;
+            font-size: 13px;
+        }
+        .info-label {
+            color: #646a73;
+            width: 60px;
+        }
+        .info-value {
+            color: #1f2329;
+            flex: 1;
+        }
+        .store-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 16px;
+            padding-top: 12px;
+            border-top: 1px solid #e5e6eb;
+        }
+        .store-actions button {
+            flex: 1;
+            font-size: 13px;
+        }
+        .empty-state {
+            text-align: center;
+            padding: 60px;
+            color: #646a73;
+        }
+        /* Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        .modal-overlay.active { display: flex; }
+        .modal {
+            background: white;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 500px;
+        }
+        .modal-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid #e5e6eb;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .modal-header h3 { font-size: 16px; color: #1f2329; }
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 20px;
+            color: #646a73;
+            cursor: pointer;
+        }
+        .modal-body { padding: 24px; }
+        .form-group {
+            margin-bottom: 16px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 6px;
+            font-size: 14px;
+            color: #1f2329;
+        }
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #dcdfe6;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+        .modal-footer {
+            padding: 16px 24px;
+            border-top: 1px solid #e5e6eb;
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+        }
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 12px 20px;
+            border-radius: 8px;
+            color: white;
+            font-size: 14px;
+            z-index: 2000;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .toast.show { opacity: 1; }
+        .toast.success { background: #34c759; }
+        .toast.error { background: #f54a45; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🏪 门店管理</h1>
+        <a href="/" class="back">← 返回首页</a>
+    </div>
+
+    <div class="container">
+        <div class="toolbar">
+            <button class="btn btn-primary" onclick="openModal()">+ 添加门店</button>
+            <div class="search-box">
+                <input type="text" id="searchInput" placeholder="搜索门店名称、店号..." onkeyup="searchStores()">
+            </div>
+        </div>
+
+        <div class="card-grid" id="storeGrid">
+            <div class="empty-state">加载中...</div>
+        </div>
+    </div>
+
+    <!-- Modal -->
+    <div class="modal-overlay" id="modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 id="modalTitle">添加门店</h3>
+                <button class="modal-close" onclick="closeModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <form id="storeForm">
+                    <input type="hidden" id="recordId">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>门店ID *</label>
+                            <input type="text" id="storeId" required placeholder="唯一标识">
+                        </div>
+                        <div class="form-group">
+                            <label>门店名称 *</label>
+                            <input type="text" id="name" required>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>店号</label>
+                            <input type="text" id="storeNo" placeholder="如: M2163">
+                        </div>
+                        <div class="form-group">
+                            <label>所属Zone</label>
+                            <select id="zone">
+                                <option value="">请选择</option>
+                                <option value="上海 Zone">上海 Zone</option>
+                                <option value="南京 Do">南京 Do</option>
+                                <option value="杭州 Do">杭州 Do</option>
+                                <option value="苏州 Do">苏州 Do</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>地址</label>
+                        <input type="text" id="address">
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>电话</label>
+                            <input type="text" id="phone">
+                        </div>
+                        <div class="form-group">
+                            <label>传真</label>
+                            <input type="text" id="fax">
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn" onclick="closeModal()">取消</button>
+                <button class="btn btn-primary" onclick="saveStore()">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+        let stores = [];
+
+        async function loadStores() {
+            try {
+                const res = await fetch('/api/stores?pageSize=500');
+                const data = await res.json();
+                
+                if (data.success) {
+                    stores = data.data;
+                    renderGrid(stores);
+                }
+            } catch (error) {
+                console.error('加载门店失败:', error);
+                showToast('加载失败', 'error');
+            }
+        }
+
+        function renderGrid(data) {
+            const grid = document.getElementById('storeGrid');
+            
+            if (data.length === 0) {
+                grid.innerHTML = '<div class="empty-state">暂无门店数据</div>';
+                return;
+            }
+
+            grid.innerHTML = data.map(store => `
+                <div class="store-card">
+                    <div class="store-header">
+                        <div>
+                            <div class="store-name">${store.name}</div>
+                            <div class="store-no">店号: ${store.storeNo || '-'}</div>
+                        </div>
+                        ${store.zone ? `<span class="zone-tag">${store.zone}</span>` : ''}
+                    </div>
+                    <div class="store-info">
+                        <div class="info-item">
+                            <span class="info-label">地址</span>
+                            <span class="info-value">${store.address || '-'}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">电话</span>
+                            <span class="info-value">${store.phone || '-'}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">传真</span>
+                            <span class="info-value">${store.fax || '-'}</span>
+                        </div>
+                    </div>
+                    <div class="store-actions">
+                        <button class="btn" onclick="editStore('${store.recordId}')">编辑</button>
+                        <button class="btn" onclick="deleteStore('${store.recordId}', '${store.name}')">删除</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function searchStores() {
+            const keyword = document.getElementById('searchInput').value.toLowerCase();
+            const filtered = stores.filter(store => 
+                store.name.toLowerCase().includes(keyword) ||
+                (store.storeNo && store.storeNo.toLowerCase().includes(keyword))
+            );
+            renderGrid(filtered);
+        }
+
+        function openModal(store = null) {
+            const modal = document.getElementById('modal');
+            const form = document.getElementById('storeForm');
+            
+            if (store) {
+                document.getElementById('modalTitle').textContent = '编辑门店';
+                document.getElementById('recordId').value = store.recordId;
+                document.getElementById('storeId').value = store.storeId;
+                document.getElementById('storeId').disabled = true;
+                document.getElementById('name').value = store.name;
+                document.getElementById('storeNo').value = store.storeNo || '';
+                document.getElementById('zone').value = store.zone || '';
+                document.getElementById('address').value = store.address || '';
+                document.getElementById('phone').value = store.phone || '';
+                document.getElementById('fax').value = store.fax || '';
+            } else {
+                document.getElementById('modalTitle').textContent = '添加门店';
+                form.reset();
+                document.getElementById('recordId').value = '';
+                document.getElementById('storeId').disabled = false;
+            }
+            
+            modal.classList.add('active');
+        }
+
+        function closeModal() {
+            document.getElementById('modal').classList.remove('active');
+        }
+
+        async function saveStore() {
+            const recordId = document.getElementById('recordId').value;
+            const data = {
+                storeId: document.getElementById('storeId').value,
+                name: document.getElementById('name').value,
+                storeNo: document.getElementById('storeNo').value,
+                zone: document.getElementById('zone').value,
+                address: document.getElementById('address').value,
+                phone: document.getElementById('phone').value,
+                fax: document.getElementById('fax').value
+            };
+
+            if (!data.storeId || !data.name) {
+                showToast('门店ID和名称不能为空', 'error');
+                return;
+            }
+
+            try {
+                const url = recordId ? `/api/stores/${recordId}` : '/api/stores';
+                const method = recordId ? 'PUT' : 'POST';
+                
+                const res = await fetch(url, {
+                    method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                
+                const result = await res.json();
+                if (result.success) {
+                    showToast(recordId ? '门店更新成功' : '门店添加成功', 'success');
+                    closeModal();
+                    loadStores();
+                } else {
+                    showToast(result.message || '保存失败', 'error');
+                }
+            } catch (error) {
+                console.error('保存门店失败:', error);
+                showToast('保存失败', 'error');
+            }
+        }
+
+        async function editStore(recordId) {
+            const store = stores.find(s => s.recordId === recordId);
+            if (store) {
+                openModal(store);
+            }
+        }
+
+        async function deleteStore(recordId, name) {
+            if (!confirm(`确定要删除门店 "${name}" 吗？`)) return;
+            
+            try {
+                const res = await fetch(`/api/stores/${recordId}`, { method: 'DELETE' });
+                const result = await res.json();
+                
+                if (result.success) {
+                    showToast('门店删除成功', 'success');
+                    loadStores();
+                } else {
+                    showToast(result.message || '删除失败', 'error');
+                }
+            } catch (error) {
+                console.error('删除门店失败:', error);
+                showToast('删除失败', 'error');
+            }
+        }
+
+        function showToast(message, type) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = `toast ${type} show`;
+            setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+
+        // 初始化
+        loadStores();
+    </script>
+</body>
+</html>

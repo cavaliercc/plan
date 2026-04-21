@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>排班管理</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f6f7;
+            min-height: 100vh;
+        }
+        .header {
+            background: white;
+            padding: 16px 24px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .header h1 { font-size: 18px; color: #1f2329; }
+        .header .back { color: #3370ff; text-decoration: none; font-size: 14px; }
+        .container { max-width: 1400px; margin: 0 auto; padding: 24px; }
+        .toolbar {
+            background: white;
+            border-radius: 8px;
+            padding: 16px 20px;
+            margin-bottom: 20px;
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .btn {
+            padding: 8px 16px;
+            border-radius: 6px;
+            border: 1px solid #dcdfe6;
+            background: white;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+        .btn:hover { border-color: #3370ff; color: #3370ff; }
+        .btn-primary {
+            background: #3370ff;
+            color: white;
+            border-color: #3370ff;
+        }
+        .btn-primary:hover { background: #296eff; }
+        .btn-success {
+            background: #34c759;
+            color: white;
+            border-color: #34c759;
+        }
+        .btn-success:hover { background: #2db14d; }
+        .week-nav {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-left: auto;
+        }
+        .week-nav button { padding: 6px 12px; }
+        .week-range { font-weight: 500; color: #1f2329; min-width: 200px; text-align: center; }
+        .schedule-grid {
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+        }
+        .grid-header {
+            display: grid;
+            grid-template-columns: 100px repeat(7, 1fr);
+            background: #f5f6f7;
+            border-bottom: 1px solid #e5e6eb;
+        }
+        .grid-header > div {
+            padding: 12px;
+            text-align: center;
+            font-weight: 500;
+            color: #1f2329;
+            font-size: 14px;
+        }
+        .grid-header .day-name { font-size: 12px; color: #646a73; margin-top: 4px; }
+        .grid-body {
+            display: grid;
+            grid-template-columns: 100px repeat(7, 1fr);
+            min-height: 400px;
+        }
+        .store-name {
+            padding: 12px;
+            background: #fafbfc;
+            border-right: 1px solid #e5e6eb;
+            border-bottom: 1px solid #e5e6eb;
+            font-size: 13px;
+            color: #1f2329;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+        }
+        .day-cell {
+            border-right: 1px solid #e5e6eb;
+            border-bottom: 1px solid #e5e6eb;
+            padding: 8px;
+            min-height: 80px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .day-cell:hover { background: #f5f6f7; }
+        .day-cell.empty { background: #fafbfc; }
+        .schedule-item {
+            background: #e8f1ff;
+            border-radius: 4px;
+            padding: 6px 8px;
+            margin-bottom: 6px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .schedule-item:hover { background: #d4e3ff; }
+        .schedule-item .time { color: #3370ff; font-weight: 500; }
+        .schedule-item .employees {
+            color: #646a73;
+            margin-top: 2px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .add-btn {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            border: 1px dashed #c9cdd4;
+            background: transparent;
+            color: #c9cdd4;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 4px auto;
+            font-size: 16px;
+        }
+        .add-btn:hover { border-color: #3370ff; color: #3370ff; }
+        
+        /* Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        .modal-overlay.active { display: flex; }
+        .modal {
+            background: white;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 600px;
+            max-height: 90vh;
+            overflow: hidden;
+        }
+        .modal-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid #e5e6eb;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .modal-header h3 { font-size: 16px; color: #1f2329; }
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 20px;
+            color: #646a73;
+            cursor: pointer;
+        }
+        .modal-body {
+            padding: 24px;
+            overflow-y: auto;
+            max-height: calc(90vh - 140px);
+        }
+        .form-group {
+            margin-bottom: 16px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 6px;
+            font-size: 14px;
+            color: #1f2329;
+        }
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #dcdfe6;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #3370ff;
+        }
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+        .employee-selector {
+            border: 1px solid #dcdfe6;
+            border-radius: 6px;
+            padding: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .employee-option {
+            display: flex;
+            align-items: center;
+            padding: 8px;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        .employee-option:hover { background: #f5f6f7; }
+        .employee-option input { margin-right: 8px; }
+        .modal-footer {
+            padding: 16px 24px;
+            border-top: 1px solid #e5e6eb;
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+        }
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 12px 20px;
+            border-radius: 8px;
+            color: white;
+            font-size: 14px;
+            z-index: 2000;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .toast.show { opacity: 1; }
+        .toast.success { background: #34c759; }
+        .toast.error { background: #f54a45; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>📋 排班管理</h1>
+        <a href="/" class="back">← 返回首页</a>
+    </div>
+
+    <div class="container">
+        <div class="toolbar">
+            <button class="btn btn-primary" onclick="openModal()">+ 新建排班</button>
+            <button class="btn" onclick="copyLastWeek()">📋 复制上期</button>
+            <button class="btn btn-success" onclick="sendNotifications()">📧 发送通知</button>
+            
+            <div class="week-nav">
+                <button class="btn" onclick="changeWeek(-1)">← 上周</button>
+                <div class="week-range" id="weekRange">加载中...</div>
+                <button class="btn" onclick="changeWeek(1)">下周 →</button>
+            </div>
+        </div>
+
+        <div class="schedule-grid">
+            <div class="grid-header">
+                <div>门店</div>
+                <div>周一<div class="day-name" id="day0"></div></div>
+                <div>周二<div class="day-name" id="day1"></div></div>
+                <div>周三<div class="day-name" id="day2"></div></div>
+                <div>周四<div class="day-name" id="day3"></div></div>
+                <div>周五<div class="day-name" id="day4"></div></div>
+                <div>周六<div class="day-name" id="day5"></div></div>
+                <div>周日<div class="day-name" id="day6"></div></div>
+            </div>
+            <div class="grid-body" id="gridBody">
+                <!-- 动态生成 -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal -->
+    <div class="modal-overlay" id="modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 id="modalTitle">新建排班</h3>
+                <button class="modal-close" onclick="closeModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <form id="scheduleForm">
+                    <input type="hidden" id="scheduleId">
+                    <input type="hidden" id="recordId">
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>日期</label>
+                            <input type="date" id="date" required>
+                        </div>
+                        <div class="form-group">
+                            <label>门店</label>
+                            <select id="storeId" required>
+                                <option value="">选择门店</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>出发时间</label>
+                            <input type="time" id="departureTime">
+                        </div>
+                        <div class="form-group">
+                            <label>开始时间</label>
+                            <input type="time" id="startTime">
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>结束时间</label>
+                            <input type="time" id="endTime">
+                        </div>
+                        <div class="form-group">
+                            <label>交通方式</label>
+                            <select id="vehicle">
+                                <option value="">请选择</option>
+                                <option value="公交">公交</option>
+                                <option value="地铁">地铁</option>
+                                <option value="自驾">自驾</option>
+                                <option value="其他">其他</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>出社区分</label>
+                            <select id="outCommunity">
+                                <option value="">请选择</option>
+                                <option value="直行公交">直行公交</option>
+                                <option value="换乘公交">换乘公交</option>
+                                <option value="地铁直达">地铁直达</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>退社区分</label>
+                            <select id="inCommunity">
+                                <option value="">请选择</option>
+                                <option value="直归公交">直归公交</option>
+                                <option value="换乘公交">换乘公交</option>
+                                <option value="地铁直达">地铁直达</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>分配人员</label>
+                        <div class="employee-selector" id="employeeSelector">
+                            <!-- 动态生成 -->
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>预测金额</label>
+                            <input type="number" id="predictedAmount" placeholder="0">
+                        </div>
+                        <div class="form-group">
+                            <label>预测件数</label>
+                            <input type="number" id="predictedPieces" placeholder="0">
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>预测数量</label>
+                            <input type="number" id="predictedQuantity" placeholder="0">
+                        </div>
+                        <div class="form-group">
+                            <label>目标P/H</label>
+                            <input type="number" id="targetPH" placeholder="0">
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn" onclick="closeModal()">取消</button>
+                <button class="btn btn-primary" onclick="saveSchedule()">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+        let currentWeekStart = getWeekStart(new Date());
+        let stores = [];
+        let employees = [];
+        let schedules = [];
+
+        function getWeekStart(date) {
+            const d = new Date(date);
+            const day = d.getDay();
+            const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+            return new Date(d.setDate(diff));
+        }
+
+        function formatDate(date) {
+            return date.toISOString().split('T')[0];
+        }
+
+        function formatDisplayDate(date) {
+            return `${date.getMonth() + 1}/${date.getDate()}`;
+        }
+
+        function updateWeekDisplay() {
+            const weekEnd = new Date(currentWeekStart);
+            weekEnd.setDate(weekEnd.getDate() + 6);
+            document.getElementById('weekRange').textContent = 
+                `${formatDate(currentWeekStart)} 至 ${formatDate(weekEnd)}`;
+            
+            // 更新日期列
+            for (let i = 0; i < 7; i++) {
+                const day = new Date(currentWeekStart);
+                day.setDate(day.getDate() + i);
+                document.getElementById(`day${i}`).textContent = formatDisplayDate(day);
+            }
+        }
+
+        function changeWeek(direction) {
+            currentWeekStart.setDate(currentWeekStart.getDate() + (direction * 7));
+            updateWeekDisplay();
+            loadSchedules();
+        }
+
+        async function loadStores() {
+            try {
+                const res = await fetch('/api/stores?pageSize=500');
+                const data = await res.json();
+                if (data.success) {
+                    stores = data.data;
+                    const select = document.getElementById('storeId');
+                    select.innerHTML = '<option value="">选择门店</option>' + 
+                        stores.map(s => `<option value="${s.storeId}">${s.name}</option>`).join('');
+                }
+            } catch (error) {
+                console.error('加载门店失败:', error);
+            }
+        }
+
+        async function loadEmployees() {
+            try {
+                const res = await fetch('/api/employees?status=在职&pageSize=500');
+                const data = await res.json();
+                if (data.success) {
+                    employees = data.data;
+                    const selector = document.getElementById('employeeSelector');
+                    selector.innerHTML = employees.map(e => `
+                        <label class="employee-option">
+                            <input type="checkbox" value="${e.employeeId}" data-name="${e.name}">
+                            <span>${e.name} (${e.role || '普通员工'})</span>
+                        </label>
+                    `).join('');
+                }
+            } catch (error) {
+                console.error('加载员工失败:', error);
+            }
+        }
+
+        async function loadSchedules() {
+            const weekEnd = new Date(currentWeekStart);
+            weekEnd.setDate(weekEnd.getDate() + 6);
+            
+            try {
+                const res = await fetch(`/api/schedules?view=weekly&weekStart=${formatDate(currentWeekStart)}`);
+                const data = await res.json();
+                
+                if (data.success) {
+                    renderScheduleGrid(data.data.schedules);
+                }
+            } catch (error) {
+                console.error('加载排班失败:', error);
+                showToast('加载排班失败', 'error');
+            }
+        }
+
+        function renderScheduleGrid(weeklyData) {
+            const gridBody = document.getElementById('gridBody');
+            gridBody.innerHTML = '';
+
+            // 按门店分组
+            const storeSchedules = {};
+            stores.forEach(s => {
+                storeSchedules[s.storeId] = {
+                    name: s.name,
+                    days: [[], [], [], [], [], [], []]
+                };
+            });
+
+            // 填充数据
+            Object.entries(weeklyData).forEach(([date, daySchedules]) => {
+                const dayIndex = new Date(date).getDay() - 1;
+                if (dayIndex < 0) return; // 周日
+                
+                daySchedules.forEach(sch => {
+                    if (storeSchedules[sch.storeId]) {
+                        storeSchedules[sch.storeId].days[dayIndex].push(sch);
+                    }
+                });
+            });
+
+            // 渲染
+            Object.entries(storeSchedules).forEach(([storeId, store]) => {
+                // 门店名称列
+                const nameCell = document.createElement('div');
+                nameCell.className = 'store-name';
+                nameCell.textContent = store.name;
+                gridBody.appendChild(nameCell);
+
+                // 7天列
+                store.days.forEach((daySchs, dayIndex) => {
+                    const cell = document.createElement('div');
+                    cell.className = 'day-cell';
+                    if (daySchs.length === 0) {
+                        cell.className += ' empty';
+                        cell.innerHTML = '<button class="add-btn" onclick="openModal(null, \'' + storeId + \', ' + dayIndex + \')">+</button>';
+                    } else {
+                        cell.innerHTML = daySchs.map(sch => `
+                            <div class="schedule-item" onclick="editSchedule('${sch.recordId}')">
+                                <div class="time">${sch.startTime || '--'}-${sch.endTime || '--'}</div>
+                                <div class="employees">${sch.assignedEmployees.join(', ') || '未分配'}</div>
+                            </div>
+                        `).join('') + '<button class="add-btn" onclick="openModal(null, \'' + storeId + \', ' + dayIndex + \')">+</button>';
+                    }
+                    gridBody.appendChild(cell);
+                });
+            });
+        }
+
+        function openModal(schedule = null, storeId = null, dayIndex = null) {
+            const modal = document.getElementById('modal');
+            const form = document.getElementById('scheduleForm');
+            
+            if (schedule) {
+                document.getElementById('modalTitle').textContent = '编辑排班';
+                document.getElementById('recordId').value = schedule.recordId;
+                document.getElementById('date').value = schedule.date;
+                document.getElementById('storeId').value = schedule.storeId;
+                document.getElementById('departureTime').value = schedule.departureTime;
+                document.getElementById('startTime').value = schedule.startTime;
+                document.getElementById('endTime').value = schedule.endTime;
+                document.getElementById('vehicle').value = schedule.vehicle;
+                document.getElementById('outCommunity').value = schedule.outCommunity;
+                document.getElementById('inCommunity').value = schedule.inCommunity;
+                document.getElementById('predictedAmount').value = schedule.predictedAmount;
+                document.getElementById('predictedPieces').value = schedule.predictedPieces;
+                document.getElementById('predictedQuantity').value = schedule.predictedQuantity;
+                document.getElementById('targetPH').value = schedule.targetPH;
+                
+                // 设置选中员工
+                document.querySelectorAll('#employeeSelector input').forEach(cb => {
+                    cb.checked = schedule.assignedEmployees.includes(cb.value);
+                });
+            } else {
+                document.getElementById('modalTitle').textContent = '新建排班';
+                form.reset();
+                document.getElementById('recordId').value = '';
+                
+                // 设置默认值
+                if (storeId) document.getElementById('storeId').value = storeId;
+                if (dayIndex !== null) {
+                    const date = new Date(currentWeekStart);
+                    date.setDate(date.getDate() + dayIndex);
+                    document.getElementById('date').value = formatDate(date);
+                } else {
+                    document.getElementById('date').value = formatDate(new Date());
+                }
+            }
+            
+            modal.classList.add('active');
+        }
+
+        function closeModal() {
+            document.getElementById('modal').classList.remove('active');
+        }
+
+        async function saveSchedule() {
+            const recordId = document.getElementById('recordId').value;
+            const selectedEmployees = Array.from(document.querySelectorAll('#employeeSelector input:checked'))
+                .map(cb => cb.value);
+
+            const data = {
+                date: document.getElementById('date').value,
+                storeId: document.getElementById('storeId').value,
+                departureTime: document.getElementById('departureTime').value,
+                startTime: document.getElementById('startTime').value,
+                endTime: document.getElementById('endTime').value,
+                vehicle: document.getElementById('vehicle').value,
+                outCommunity: document.getElementById('outCommunity').value,
+                inCommunity: document.getElementById('inCommunity').value,
+                assignedEmployees: selectedEmployees,
+                predictedAmount: parseFloat(document.getElementById('predictedAmount').value) || 0,
+                predictedPieces: parseFloat(document.getElementById('predictedPieces').value) || 0,
+                predictedQuantity: parseFloat(document.getElementById('predictedQuantity').value) || 0,
+                targetPH: parseFloat(document.getElementById('targetPH').value) || 0
+            };
+
+            try {
+                const url = recordId ? `/api/schedules/${recordId}` : '/api/schedules';
+                const method = recordId ? 'PUT' : 'POST';
+                
+                const res = await fetch(url, {
+                    method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                
+                const result = await res.json();
+                if (result.success) {
+                    showToast(recordId ? '排班更新成功' : '排班创建成功', 'success');
+                    closeModal();
+                    loadSchedules();
+                } else {
+                    showToast(result.message || '保存失败', 'error');
+                }
+            } catch (error) {
+                console.error('保存排班失败:', error);
+                showToast('保存失败', 'error');
+            }
+        }
+
+        async function editSchedule(recordId) {
+            try {
+                const res = await fetch(`/api/schedules/${recordId}`);
+                const data = await res.json();
+                if (data.success) {
+                    openModal(data.data);
+                }
+            } catch (error) {
+                console.error('获取排班详情失败:', error);
+            }
+        }
+
+        async function copyLastWeek() {
+            const lastWeekStart = new Date(currentWeekStart);
+            lastWeekStart.setDate(lastWeekStart.getDate() - 7);
+            
+            if (!confirm(`确定要复制 ${formatDate(lastWeekStart)} 的排班到本周吗？`)) return;
+            
+            try {
+                const res = await fetch('/api/schedules/copy', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        sourceWeekStart: formatDate(lastWeekStart),
+                        targetWeekStart: formatDate(currentWeekStart)
+                    })
+                });
+                
+                const result = await res.json();
+                if (result.success) {
+                    showToast(`成功复制 ${result.data.copiedCount} 条排班`, 'success');
+                    loadSchedules();
+                } else {
+                    showToast(result.message || '复制失败', 'error');
+                }
+            } catch (error) {
+                console.error('复制排班失败:', error);
+                showToast('复制失败', 'error');
+            }
+        }
+
+        async function sendNotifications() {
+            if (!confirm('确定要发送本周所有排班的通知邮件吗？')) return;
+            
+            try {
+                const res = await fetch('/api/notifications/weekly-summary', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ weekStart: formatDate(currentWeekStart) })
+                });
+                
+                const result = await res.json();
+                if (result.success) {
+                    showToast('通知发送成功', 'success');
+                } else {
+                    showToast(result.message || '发送失败', 'error');
+                }
+            } catch (error) {
+                console.error('发送通知失败:', error);
+                showToast('发送失败', 'error');
+            }
+        }
+
+        function showToast(message, type) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = `toast ${type} show`;
+            setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+
+        // 初始化
+        updateWeekDisplay();
+        loadStores();
+        loadEmployees();
+        loadSchedules();
+    </script>
+</body>
+</html>
