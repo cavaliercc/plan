@@ -1,0 +1,179 @@
+{
+  "app_name": "排班管理系统",
+  "tables": [
+    {
+      "name": "门店信息",
+      "description": "门店基础信息表",
+      "fields": [
+        {
+          "name": "门店ID",
+          "type": "text",
+          "required": true,
+          "description": "唯一标识"
+        },
+        {
+          "name": "门店名称",
+          "type": "text",
+          "required": true
+        },
+        {
+          "name": "店号",
+          "type": "text",
+          "description": "如 M2163"
+        },
+        {
+          "name": "所属Zone",
+          "type": "single_select",
+          "options": ["上海 Zone", "南京 Do", "杭州 Do", "苏州 Do"]
+        },
+        {
+          "name": "地址",
+          "type": "text"
+        },
+        {
+          "name": "电话",
+          "type": "text"
+        },
+        {
+          "name": "传真",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "name": "员工信息",
+      "description": "员工基础信息表",
+      "fields": [
+        {
+          "name": "员工ID",
+          "type": "text",
+          "required": true,
+          "description": "唯一标识"
+        },
+        {
+          "name": "姓名",
+          "type": "text",
+          "required": true
+        },
+        {
+          "name": "员工编号",
+          "type": "text",
+          "description": "如 2500008"
+        },
+        {
+          "name": "角色",
+          "type": "single_select",
+          "options": ["SV", "普通员工", "店长", "副店长"],
+          "default": "普通员工"
+        },
+        {
+          "name": "邮箱",
+          "type": "text",
+          "description": "用于接收排班通知"
+        },
+        {
+          "name": "所属门店",
+          "type": "link",
+          "link_table": "门店信息",
+          "display_field": "门店名称"
+        },
+        {
+          "name": "状态",
+          "type": "single_select",
+          "options": ["在职", "离职"],
+          "default": "在职"
+        }
+      ]
+    },
+    {
+      "name": "排班表",
+      "description": "排班记录表",
+      "fields": [
+        {
+          "name": "排班ID",
+          "type": "text",
+          "required": true,
+          "description": "唯一标识"
+        },
+        {
+          "name": "日期",
+          "type": "date",
+          "date_format": "yyyy-MM-dd"
+        },
+        {
+          "name": "门店",
+          "type": "link",
+          "link_table": "门店信息",
+          "display_field": "门店名称"
+        },
+        {
+          "name": "出发时间",
+          "type": "text",
+          "description": "如 19:45"
+        },
+        {
+          "name": "开始时间",
+          "type": "text",
+          "description": "如 20:00"
+        },
+        {
+          "name": "结束时间",
+          "type": "text",
+          "description": "如 29:00"
+        },
+        {
+          "name": "车辆",
+          "type": "single_select",
+          "options": ["公交", "地铁", "自驾", "其他"]
+        },
+        {
+          "name": "出社区分",
+          "type": "single_select",
+          "options": ["直行公交", "换乘公交", "地铁直达"]
+        },
+        {
+          "name": "退社区分",
+          "type": "single_select",
+          "options": ["直归公交", "换乘公交", "地铁直达"]
+        },
+        {
+          "name": "分配人员",
+          "type": "link",
+          "link_table": "员工信息",
+          "display_field": "姓名",
+          "multiple": true
+        },
+        {
+          "name": "编组人数",
+          "type": "formula",
+          "formula": "COUNT(分配人员)"
+        },
+        {
+          "name": "预测金额",
+          "type": "number",
+          "number_format": "数字"
+        },
+        {
+          "name": "预测件数",
+          "type": "number",
+          "number_format": "数字"
+        },
+        {
+          "name": "预测数量",
+          "type": "number",
+          "number_format": "数字"
+        },
+        {
+          "name": "现店铺HR",
+          "type": "number",
+          "number_format": "数字"
+        },
+        {
+          "name": "目标P/H",
+          "type": "number",
+          "number_format": "数字"
+        }
+      ]
+    }
+  ]
+}
