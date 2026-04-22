@@ -215,9 +215,10 @@ const scheduleStore = {
     };
   },
   
-  get: (scheduleId) => {
+  get: (id) => {
     const data = readData('schedules');
-    return data.find(item => item.fields['排班ID'] === scheduleId);
+    // 支持通过 record_id 或 排班ID 查找
+    return data.find(item => item.record_id === id || item.fields['排班ID'] === id);
   },
   
   create: (fields) => {
