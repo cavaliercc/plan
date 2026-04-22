@@ -477,11 +477,18 @@
             weekEnd.setDate(weekEnd.getDate() + 6);
             
             try {
-                const res = await fetch(`/api/schedules?view=weekly&weekStart=${formatDate(currentWeekStart)}`);
+                const res = await fetch(`/api/schedules?startDate=${formatDate(currentWeekStart)}&endDate=${formatDate(weekEnd)}`);
                 const data = await res.json();
                 
                 if (data.success) {
-                    renderScheduleGrid(data.data.schedules);
+                    // 转换为周视图格式
+                    const weeklyData = {};
+                    data.data.forEach(sch => {
+                        const date = sch.date ? new Date(sch.date).toISOString().split('T')[0] : '';
+                        if (!weeklyData[date]) weeklyData[date] = [];
+                        weeklyData[date].push(sch);
+                    });
+                    renderScheduleGrid(weeklyData);
                 }
             } catch (error) {
                 console.error('加载排班失败:', error);
