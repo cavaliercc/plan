@@ -53,6 +53,7 @@
             color: white;
             border-color: #34c759;
         }
+        .btn-success:hover { background: #2db14d; }
         .week-nav {
             display: flex;
             align-items: center;
@@ -61,47 +62,85 @@
         }
         .week-nav button { padding: 6px 12px; }
         .week-range { font-weight: 500; color: #1f2329; min-width: 200px; text-align: center; }
-        
-        /* 排班列表样式 */
-        .schedule-list {
+        .schedule-grid {
             background: white;
             border-radius: 8px;
             overflow: hidden;
             box-shadow: 0 1px 2px rgba(0,0,0,0.06);
         }
-        .schedule-table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-        .schedule-table th {
+        .grid-header {
+            display: grid;
+            grid-template-columns: 100px repeat(7, 1fr);
             background: #f5f6f7;
+            border-bottom: 1px solid #e5e6eb;
+        }
+        .grid-header > div {
             padding: 12px;
-            text-align: left;
+            text-align: center;
             font-weight: 500;
             color: #1f2329;
-            border-bottom: 1px solid #e5e6eb;
+            font-size: 14px;
         }
-        .schedule-table td {
+        .grid-header .day-name { font-size: 12px; color: #646a73; margin-top: 4px; }
+        .grid-body {
+            display: grid;
+            grid-template-columns: 100px repeat(7, 1fr);
+            min-height: 400px;
+        }
+        .store-name {
             padding: 12px;
+            background: #fafbfc;
+            border-right: 1px solid #e5e6eb;
             border-bottom: 1px solid #e5e6eb;
-            color: #646a73;
+            font-size: 13px;
+            color: #1f2329;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
         }
-        .schedule-table tr:hover { background: #f5f6f7; }
-        .schedule-table .date-cell { font-weight: 500; color: #1f2329; }
-        .schedule-table .time-cell { color: #3370ff; font-weight: 500; }
-        .schedule-table .store-cell { color: #1f2329; }
-        .schedule-table .employees-cell { color: #646a73; }
-        .schedule-table .actions { white-space: nowrap; }
-        .schedule-table .actions button {
-            padding: 4px 12px;
-            margin-right: 8px;
+        .day-cell {
+            border-right: 1px solid #e5e6eb;
+            border-bottom: 1px solid #e5e6eb;
+            padding: 8px;
+            min-height: 80px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .day-cell:hover { background: #f5f6f7; }
+        .day-cell.empty { background: #fafbfc; }
+        .schedule-item {
+            background: #e8f1ff;
+            border-radius: 4px;
+            padding: 6px 8px;
+            margin-bottom: 6px;
             font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
         }
-        .empty-state {
-            text-align: center;
-            padding: 60px;
-            color: #8f959e;
+        .schedule-item:hover { background: #d4e3ff; }
+        .schedule-item .time { color: #3370ff; font-weight: 500; }
+        .schedule-item .employees {
+            color: #646a73;
+            margin-top: 2px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
+        .add-btn {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            border: 1px dashed #c9cdd4;
+            background: transparent;
+            color: #c9cdd4;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 4px auto;
+            font-size: 16px;
+        }
+        .add-btn:hover { border-color: #3370ff; color: #3370ff; }
         
         /* Modal */
         .modal-overlay {
@@ -228,8 +267,20 @@
             </div>
         </div>
 
-        <div class="schedule-list" id="scheduleList">
-            <div class="empty-state">加载中...</div>
+        <div class="schedule-grid">
+            <div class="grid-header">
+                <div>门店</div>
+                <div>周一<div class="day-name" id="day0"></div></div>
+                <div>周二<div class="day-name" id="day1"></div></div>
+                <div>周三<div class="day-name" id="day2"></div></div>
+                <div>周四<div class="day-name" id="day3"></div></div>
+                <div>周五<div class="day-name" id="day4"></div></div>
+                <div>周六<div class="day-name" id="day5"></div></div>
+                <div>周日<div class="day-name" id="day6"></div></div>
+            </div>
+            <div class="grid-body" id="gridBody">
+                <!-- 动态生成 -->
+            </div>
         </div>
     </div>
 
@@ -242,15 +293,16 @@
             </div>
             <div class="modal-body">
                 <form id="scheduleForm">
+                    <input type="hidden" id="scheduleId">
                     <input type="hidden" id="recordId">
                     
                     <div class="form-row">
                         <div class="form-group">
-                            <label>日期 *</label>
+                            <label>日期</label>
                             <input type="date" id="date" required>
                         </div>
                         <div class="form-group">
-                            <label>门店 *</label>
+                            <label>门店</label>
                             <select id="storeId" required>
                                 <option value="">选择门店</option>
                             </select>
@@ -309,7 +361,7 @@
                     <div class="form-group">
                         <label>分配人员</label>
                         <div class="employee-selector" id="employeeSelector">
-                            <div class="empty-state" style="padding: 20px;">请先添加员工</div>
+                            <!-- 动态生成 -->
                         </div>
                     </div>
                     
@@ -349,6 +401,7 @@
         let currentWeekStart = getWeekStart(new Date());
         let stores = [];
         let employees = [];
+        let schedules = [];
 
         function getWeekStart(date) {
             const d = new Date(date);
@@ -362,11 +415,7 @@
         }
 
         function formatDisplayDate(date) {
-            const month = date.getMonth() + 1;
-            const day = date.getDate();
-            const weekdays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
-            const weekday = weekdays[date.getDay()];
-            return `${month}/${day} ${weekday}`;
+            return `${date.getMonth() + 1}/${date.getDate()}`;
         }
 
         function updateWeekDisplay() {
@@ -374,6 +423,13 @@
             weekEnd.setDate(weekEnd.getDate() + 6);
             document.getElementById('weekRange').textContent = 
                 `${formatDate(currentWeekStart)} 至 ${formatDate(weekEnd)}`;
+            
+            // 更新日期列
+            for (let i = 0; i < 7; i++) {
+                const day = new Date(currentWeekStart);
+                day.setDate(day.getDate() + i);
+                document.getElementById(`day${i}`).textContent = formatDisplayDate(day);
+            }
         }
 
         function changeWeek(direction) {
@@ -404,16 +460,12 @@
                 if (data.success) {
                     employees = data.data;
                     const selector = document.getElementById('employeeSelector');
-                    if (employees.length === 0) {
-                        selector.innerHTML = '<div class="empty-state" style="padding: 20px;">请先添加员工</div>';
-                    } else {
-                        selector.innerHTML = employees.map(e => `
-                            <label class="employee-option">
-                                <input type="checkbox" value="${e.employeeId}" data-name="${e.name}">
-                                <span>${e.name} (${e.role || '普通员工'})</span>
-                            </label>
-                        `).join('');
-                    }
+                    selector.innerHTML = employees.map(e => `
+                        <label class="employee-option">
+                            <input type="checkbox" value="${e.employeeId}" data-name="${e.name}">
+                            <span>${e.name} (${e.role || '普通员工'})</span>
+                        </label>
+                    `).join('');
                 }
             } catch (error) {
                 console.error('加载员工失败:', error);
@@ -429,7 +481,14 @@
                 const data = await res.json();
                 
                 if (data.success) {
-                    renderScheduleList(data.data);
+                    // 转换为周视图格式
+                    const weeklyData = {};
+                    data.data.forEach(sch => {
+                        const date = sch.date ? new Date(sch.date).toISOString().split('T')[0] : '';
+                        if (!weeklyData[date]) weeklyData[date] = [];
+                        weeklyData[date].push(sch);
+                    });
+                    renderScheduleGrid(weeklyData);
                 }
             } catch (error) {
                 console.error('加载排班失败:', error);
@@ -437,92 +496,97 @@
             }
         }
 
-        function renderScheduleList(schedules) {
-            const container = document.getElementById('scheduleList');
-            
-            if (schedules.length === 0) {
-                container.innerHTML = '<div class="empty-state">本周暂无排班数据</div>';
-                return;
-            }
+        function renderScheduleGrid(weeklyData) {
+            const gridBody = document.getElementById('gridBody');
+            gridBody.innerHTML = '';
 
-            // 按日期分组
-            const grouped = {};
-            schedules.forEach(sch => {
-                const date = sch.date ? new Date(sch.date).toISOString().split('T')[0] : '';
-                if (!grouped[date]) grouped[date] = [];
-                grouped[date].push(sch);
+            // 按门店分组
+            const storeSchedules = {};
+            stores.forEach(s => {
+                storeSchedules[s.storeId] = {
+                    name: s.name,
+                    days: [[], [], [], [], [], [], []]
+                };
             });
 
-            // 按日期排序
-            const sortedDates = Object.keys(grouped).sort();
-
-            let html = '<table class="schedule-table"><thead><tr>' +
-                '<th>日期</th>' +
-                '<th>门店</th>' +
-                '<th>时间</th>' +
-                '<th>交通</th>' +
-                '<th>分配人员</th>' +
-                '<th>操作</th>' +
-                '</tr></thead><tbody>';
-
-            sortedDates.forEach(date => {
-                const daySchedules = grouped[date];
-                const displayDate = formatDisplayDate(new Date(date));
+            // 填充数据
+            Object.entries(weeklyData).forEach(([date, daySchedules]) => {
+                const dayIndex = new Date(date).getDay() - 1;
+                if (dayIndex < 0) return; // 周日
                 
-                daySchedules.forEach((sch, index) => {
-                    const store = stores.find(s => s.storeId === sch.storeId);
-                    const storeName = store ? store.name : sch.storeId;
-                    const timeStr = `${sch.departureTime || '--'} → ${sch.startTime || '--'} - ${sch.endTime || '--'}`;
-                    const employees = (sch.assignedEmployees || []).join(', ') || '未分配';
-                    
-                    html += `<tr>`;
-                    if (index === 0) {
-                        html += `<td class="date-cell" rowspan="${daySchedules.length}">${displayDate}</td>`;
+                daySchedules.forEach(sch => {
+                    if (storeSchedules[sch.storeId]) {
+                        storeSchedules[sch.storeId].days[dayIndex].push(sch);
                     }
-                    html += `<td class="store-cell">${storeName}</td>`;
-                    html += `<td class="time-cell">${timeStr}</td>`;
-                    html += `<td>${sch.vehicle || '-'}</td>`;
-                    html += `<td class="employees-cell">${employees}</td>`;
-                    html += `<td class="actions">`;
-                    html += `<button class="btn" onclick="editSchedule('${sch.recordId}')">编辑</button>`;
-                    html += `<button class="btn" onclick="deleteSchedule('${sch.recordId}')">删除</button>`;
-                    html += `</td></tr>`;
                 });
             });
 
-            html += '</tbody></table>';
-            container.innerHTML = html;
+            // 渲染
+            Object.entries(storeSchedules).forEach(([storeId, store]) => {
+                // 门店名称列
+                const nameCell = document.createElement('div');
+                nameCell.className = 'store-name';
+                nameCell.textContent = store.name;
+                gridBody.appendChild(nameCell);
+
+                // 7天列
+                store.days.forEach((daySchs, dayIndex) => {
+                    const cell = document.createElement('div');
+                    cell.className = 'day-cell';
+                    if (daySchs.length === 0) {
+                        cell.className += ' empty';
+                        cell.innerHTML = '<button class="add-btn" onclick="openModal(null, \'' + storeId + \', ' + dayIndex + \')">+</button>';
+                    } else {
+                        cell.innerHTML = daySchs.map(sch => `
+                            <div class="schedule-item" onclick="editSchedule('${sch.recordId}')">
+                                <div class="time">${sch.startTime || '--'}-${sch.endTime || '--'}</div>
+                                <div class="employees">${sch.assignedEmployees.join(', ') || '未分配'}</div>
+                            </div>
+                        `).join('') + '<button class="add-btn" onclick="openModal(null, \'' + storeId + \', ' + dayIndex + \')">+</button>';
+                    }
+                    gridBody.appendChild(cell);
+                });
+            });
         }
 
-        function openModal(schedule = null) {
+        function openModal(schedule = null, storeId = null, dayIndex = null) {
             const modal = document.getElementById('modal');
             const form = document.getElementById('scheduleForm');
             
             if (schedule) {
                 document.getElementById('modalTitle').textContent = '编辑排班';
                 document.getElementById('recordId').value = schedule.recordId;
-                document.getElementById('date').value = schedule.date ? new Date(schedule.date).toISOString().split('T')[0] : '';
-                document.getElementById('storeId').value = schedule.storeId || '';
-                document.getElementById('departureTime').value = schedule.departureTime || '';
-                document.getElementById('startTime').value = schedule.startTime || '';
-                document.getElementById('endTime').value = schedule.endTime || '';
-                document.getElementById('vehicle').value = schedule.vehicle || '';
-                document.getElementById('outCommunity').value = schedule.outCommunity || '';
-                document.getElementById('inCommunity').value = schedule.inCommunity || '';
-                document.getElementById('predictedAmount').value = schedule.predictedAmount || '';
-                document.getElementById('predictedPieces').value = schedule.predictedPieces || '';
-                document.getElementById('predictedQuantity').value = schedule.predictedQuantity || '';
-                document.getElementById('targetPH').value = schedule.targetPH || '';
+                document.getElementById('date').value = schedule.date;
+                document.getElementById('storeId').value = schedule.storeId;
+                document.getElementById('departureTime').value = schedule.departureTime;
+                document.getElementById('startTime').value = schedule.startTime;
+                document.getElementById('endTime').value = schedule.endTime;
+                document.getElementById('vehicle').value = schedule.vehicle;
+                document.getElementById('outCommunity').value = schedule.outCommunity;
+                document.getElementById('inCommunity').value = schedule.inCommunity;
+                document.getElementById('predictedAmount').value = schedule.predictedAmount;
+                document.getElementById('predictedPieces').value = schedule.predictedPieces;
+                document.getElementById('predictedQuantity').value = schedule.predictedQuantity;
+                document.getElementById('targetPH').value = schedule.targetPH;
                 
                 // 设置选中员工
                 document.querySelectorAll('#employeeSelector input').forEach(cb => {
-                    cb.checked = (schedule.assignedEmployees || []).includes(cb.value);
+                    cb.checked = schedule.assignedEmployees.includes(cb.value);
                 });
             } else {
                 document.getElementById('modalTitle').textContent = '新建排班';
                 form.reset();
                 document.getElementById('recordId').value = '';
-                document.getElementById('date').value = formatDate(new Date());
+                
+                // 设置默认值
+                if (storeId) document.getElementById('storeId').value = storeId;
+                if (dayIndex !== null) {
+                    const date = new Date(currentWeekStart);
+                    date.setDate(date.getDate() + dayIndex);
+                    document.getElementById('date').value = formatDate(date);
+                } else {
+                    document.getElementById('date').value = formatDate(new Date());
+                }
             }
             
             modal.classList.add('active');
@@ -552,11 +616,6 @@
                 predictedQuantity: parseFloat(document.getElementById('predictedQuantity').value) || 0,
                 targetPH: parseFloat(document.getElementById('targetPH').value) || 0
             };
-
-            if (!data.date || !data.storeId) {
-                showToast('日期和门店不能为空', 'error');
-                return;
-            }
 
             try {
                 const url = recordId ? `/api/schedules/${recordId}` : '/api/schedules';
@@ -591,25 +650,6 @@
                 }
             } catch (error) {
                 console.error('获取排班详情失败:', error);
-            }
-        }
-
-        async function deleteSchedule(recordId) {
-            if (!confirm('确定要删除这条排班吗？')) return;
-            
-            try {
-                const res = await fetch(`/api/schedules/${recordId}`, { method: 'DELETE' });
-                const result = await res.json();
-                
-                if (result.success) {
-                    showToast('排班删除成功', 'success');
-                    loadSchedules();
-                } else {
-                    showToast(result.message || '删除失败', 'error');
-                }
-            } catch (error) {
-                console.error('删除排班失败:', error);
-                showToast('删除失败', 'error');
             }
         }
 
