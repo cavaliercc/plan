@@ -18,15 +18,17 @@ router.get('/', async (req, res) => {
     const conditions = [];
     
     if (startDate && endDate) {
+      const startTimestamp = moment(startDate).valueOf();
+      const endTimestamp = moment(endDate).valueOf();
       conditions.push({
         field_name: '日期',
         operator: 'isGreaterEqual',
-        value: [startDate]
+        value: [startTimestamp]
       });
       conditions.push({
         field_name: '日期',
         operator: 'isLessEqual',
-        value: [endDate]
+        value: [endTimestamp]
       });
     }
     
