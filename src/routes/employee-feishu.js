@@ -2,7 +2,10 @@ const express = require('express');
 const router = express.Router();
 const xlsx = require('xlsx');
 const multer = require('multer');
-const { employeeStore } = require('../utils/localStore');
+const feishu = require('../utils/feishu');
+
+const APP_TOKEN = process.env.BITABLE_APP_TOKEN;
+const EMPLOYEE_TABLE_ID = 'tblfwcIL6zINHQgx'; // 员工表ID
 
 // 配置 multer
 const upload = multer({ storage: multer.memoryStorage() });
@@ -14,11 +17,27 @@ router.get('/', async (req, res) => {
     
     const params = { pageSize: parseInt(pageSize) };
     if (pageToken) params.pageToken = pageToken;
-    if (role) params.role = role;
-    if (status) params.status = status;
-    if (storeId) params.storeId = storeId;
+    
+    // 构建筛选条件
+    const conditions = [];
+    if (role) {
+      conditions.push({ field_name: '角色', operator: 'is', value: [role] });
+    }
+    if (status) {
+      conditions.push({ field_name: '状态', operator: 'is', value: [status] });
+    }
+    if (storeId) {
+      conditions.push({ field_name: '所属门店', operator: 'is', value: [storeId] });
+    }
+    
+    if (conditions.length > 0) {
+      params.filter = {
+        conjunction: 'and',
+        conditions
+      };
+    }
 
-    const data = employeeStore.list(params);
+    const data = await feishu.listBitableRecords(APP_TOKEN, EMPLOYEE_TABLE_ID, params);
     
     const employees = data.items?.map(item => ({
       recordId: item.record_id,
@@ -27,7 +46,7 @@ router.get('/', async (req, res) => {
       employeeNo: item.fields['员工编号'],
       role: item.fields['角色'],
       email: item.fields['邮箱'],
-      storeId: item.fields['所属门店'],
+      storeId: item.fields['所属门店']?.[0]?.text || item.fields['所属门店'],
       status: item.fields['状态'],
       createdTime: item.fields['创建时间'],
       modifiedTime: item.fields['修改时间']
@@ -50,12 +69,22 @@ router.get('/', async (req, res) => {
 router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const item = employeeStore.get(id);
+    const data = await feishu.listBitableRecords(APP_TOKEN, EMPLOYEE_TABLE_ID, {
+      filter: {
+        conjunction: 'and',
+        conditions: [{
+          field_name: '员工ID',
+          operator: 'is',
+          value: [id]
+        }]
+      }
+    });
 
-    if (!item) {
+    if (!data.items || data.items.length === 0) {
       return res.status(404).json({ success: false, message: '员工不存在' });
     }
 
+    const item = data.items[0];
     const employee = {
       recordId: item.record_id,
       employeeId: item.fields['员工ID'],
@@ -89,11 +118,11 @@ router.post('/', async (req, res) => {
       '员工编号': employeeNo || '',
       '角色': role || '普通员工',
       '邮箱': email || '',
-      '所属门店': storeId || '',
+      '所属门店': storeId ? [storeId] : [],
       '状态': status
     };
 
-    const data = employeeStore.create(fields);
+    const data = await feishu.createBitableRecord(APP_TOKEN, EMPLOYEE_TABLE_ID, fields);
     
     res.json({
       success: true,
@@ -115,25 +144,24 @@ router.post('/batch', async (req, res) => {
       return res.status(400).json({ success: false, message: '员工列表不能为空' });
     }
 
-    const recordIds = [];
-    for (const emp of employees) {
-      const fields = {
+    const records = employees.map(emp => ({
+      fields: {
         '员工ID': emp.employeeId,
         '姓名': emp.name,
         '员工编号': emp.employeeNo || '',
         '角色': emp.role || '普通员工',
         '邮箱': emp.email || '',
-        '所属门店': emp.storeId || '',
+        '所属门店': emp.storeId ? [emp.storeId] : [],
         '状态': emp.status || '在职'
-      };
-      const data = employeeStore.create(fields);
-      recordIds.push(data.record.record_id);
-    }
+      }
+    }));
+
+    const data = await feishu.batchCreateBitableRecords(APP_TOKEN, EMPLOYEE_TABLE_ID, records);
     
     res.json({
       success: true,
-      message: `成功创建 ${recordIds.length} 个员工`,
-      data: { recordIds }
+      message: `成功创建 ${data.records?.length || 0} 个员工`,
+      data: { recordIds: data.records?.map(r => r.record_id) }
     });
   } catch (error) {
     console.error('批量创建员工失败:', error);
@@ -161,34 +189,34 @@ router.post('/import', upload.single('file'), async (req, res) => {
       email: row['邮箱'] || row['Email'] || '',
       storeId: row['所属门店'] || row['门店'] || row['Store'] || '',
       status: row['状态'] || row['Status'] || '在职'
-    })).filter(emp => emp.name);
+    })).filter(emp => emp.name); // 过滤掉没有姓名的
 
     if (employees.length === 0) {
       return res.status(400).json({ success: false, message: '未找到有效的员工数据' });
     }
 
-    const recordIds = [];
-    for (const emp of employees) {
-      const fields = {
+    // 批量创建
+    const records = employees.map(emp => ({
+      fields: {
         '员工ID': emp.employeeId,
         '姓名': emp.name,
         '员工编号': emp.employeeNo,
         '角色': emp.role,
         '邮箱': emp.email,
-        '所属门店': emp.storeId,
+        '所属门店': emp.storeId ? [emp.storeId] : [],
         '状态': emp.status
-      };
-      const data = employeeStore.create(fields);
-      recordIds.push(data.record.record_id);
-    }
+      }
+    }));
+
+    const result = await feishu.batchCreateBitableRecords(APP_TOKEN, EMPLOYEE_TABLE_ID, records);
     
     res.json({
       success: true,
-      message: `成功导入 ${recordIds.length} 个员工`,
+      message: `成功导入 ${result.records?.length || 0} 个员工`,
       data: {
         total: employees.length,
-        imported: recordIds.length,
-        recordIds
+        imported: result.records?.length || 0,
+        recordIds: result.records?.map(r => r.record_id)
       }
     });
   } catch (error) {
@@ -208,14 +236,10 @@ router.put('/:recordId', async (req, res) => {
     if (employeeNo !== undefined) fields['员工编号'] = employeeNo;
     if (role !== undefined) fields['角色'] = role;
     if (email !== undefined) fields['邮箱'] = email;
-    if (storeId !== undefined) fields['所属门店'] = storeId;
+    if (storeId !== undefined) fields['所属门店'] = storeId ? [storeId] : [];
     if (status !== undefined) fields['状态'] = status;
 
-    const data = employeeStore.update(recordId, fields);
-    
-    if (!data) {
-      return res.status(404).json({ success: false, message: '员工不存在' });
-    }
+    await feishu.updateBitableRecord(APP_TOKEN, EMPLOYEE_TABLE_ID, recordId, fields);
     
     res.json({ success: true, message: '员工更新成功' });
   } catch (error) {
@@ -228,7 +252,7 @@ router.put('/:recordId', async (req, res) => {
 router.delete('/:recordId', async (req, res) => {
   try {
     const { recordId } = req.params;
-    employeeStore.delete(recordId);
+    await feishu.deleteBitableRecord(APP_TOKEN, EMPLOYEE_TABLE_ID, recordId);
     res.json({ success: true, message: '员工删除成功' });
   } catch (error) {
     console.error('删除员工失败:', error);

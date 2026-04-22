@@ -1,6 +1,9 @@
 const express = require('express');
 const router = express.Router();
-const { storeStore } = require('../utils/localStore');
+const feishu = require('../utils/feishu');
+
+const APP_TOKEN = process.env.BITABLE_APP_TOKEN;
+const STORE_TABLE_ID = 'tblWeCC6wVxNFv3p'; // 门店表ID
 
 // 获取所有门店
 router.get('/', async (req, res) => {
@@ -9,9 +12,20 @@ router.get('/', async (req, res) => {
     
     const params = { pageSize: parseInt(pageSize) };
     if (pageToken) params.pageToken = pageToken;
-    if (zone) params.zone = zone;
+    
+    // 如果有区域筛选
+    if (zone) {
+      params.filter = {
+        conjunction: 'and',
+        conditions: [{
+          field_name: '所属Zone',
+          operator: 'is',
+          value: [zone]
+        }]
+      };
+    }
 
-    const data = storeStore.list(params);
+    const data = await feishu.listBitableRecords(APP_TOKEN, STORE_TABLE_ID, params);
     
     const stores = data.items?.map(item => ({
       recordId: item.record_id,
@@ -43,12 +57,22 @@ router.get('/', async (req, res) => {
 router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const item = storeStore.get(id);
+    const data = await feishu.listBitableRecords(APP_TOKEN, STORE_TABLE_ID, {
+      filter: {
+        conjunction: 'and',
+        conditions: [{
+          field_name: '门店ID',
+          operator: 'is',
+          value: [id]
+        }]
+      }
+    });
 
-    if (!item) {
+    if (!data.items || data.items.length === 0) {
       return res.status(404).json({ success: false, message: '门店不存在' });
     }
 
+    const item = data.items[0];
     const store = {
       recordId: item.record_id,
       storeId: item.fields['门店ID'],
@@ -86,7 +110,7 @@ router.post('/', async (req, res) => {
       '传真': fax || ''
     };
 
-    const data = storeStore.create(fields);
+    const data = await feishu.createBitableRecord(APP_TOKEN, STORE_TABLE_ID, fields);
     
     res.json({
       success: true,
@@ -113,11 +137,7 @@ router.put('/:recordId', async (req, res) => {
     if (phone !== undefined) fields['电话'] = phone;
     if (fax !== undefined) fields['传真'] = fax;
 
-    const data = storeStore.update(recordId, fields);
-    
-    if (!data) {
-      return res.status(404).json({ success: false, message: '门店不存在' });
-    }
+    await feishu.updateBitableRecord(APP_TOKEN, STORE_TABLE_ID, recordId, fields);
     
     res.json({ success: true, message: '门店更新成功' });
   } catch (error) {
@@ -130,7 +150,7 @@ router.put('/:recordId', async (req, res) => {
 router.delete('/:recordId', async (req, res) => {
   try {
     const { recordId } = req.params;
-    storeStore.delete(recordId);
+    await feishu.deleteBitableRecord(APP_TOKEN, STORE_TABLE_ID, recordId);
     res.json({ success: true, message: '门店删除成功' });
   } catch (error) {
     console.error('删除门店失败:', error);
@@ -141,7 +161,7 @@ router.delete('/:recordId', async (req, res) => {
 // 获取区域列表
 router.get('/meta/zones', async (req, res) => {
   try {
-    const data = storeStore.list({ pageSize: 500 });
+    const data = await feishu.listBitableRecords(APP_TOKEN, STORE_TABLE_ID, { pageSize: 500 });
     
     const zones = [...new Set(data.items?.map(item => item.fields['所属Zone']).filter(Boolean))];
     
