@@ -83,8 +83,11 @@ app.use((req, res) => {
   res.status(404).json({ success: false, message: '接口不存在' });
 });
 
-app.listen(PORT, () => {
-  console.log(`排班管理系统已启动: http://localhost:${PORT}`);
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`排班管理系统已启动:`);
+  console.log(`  - 本地访问: http://localhost:${PORT}`);
+  console.log(`  - 本地访问: http://127.0.0.1:${PORT}`);
+  console.log(`  - 网络访问: http://0.0.0.0:${PORT}`);
   console.log(`环境: ${process.env.NODE_ENV || 'development'}`);
 });
 

@@ -246,12 +246,27 @@
                     <input type="hidden" id="recordId">
                     <div class="form-row">
                         <div class="form-group">
+                            <label>员工ID *</label>
+                            <input type="text" id="employeeId" placeholder="如: EMP001" required>
+                        </div>
+                        <div class="form-group">
                             <label>姓名 *</label>
                             <input type="text" id="name" required>
                         </div>
+                    </div>
+                    <div class="form-row">
                         <div class="form-group">
                             <label>员工编号</label>
                             <input type="text" id="employeeNo" placeholder="如: 2500008">
+                        </div>
+                        <div class="form-group">
+                            <label>角色</label>
+                            <select id="role">
+                                <option value="普通员工">普通员工</option>
+                                <option value="SV">SV</option>
+                                <option value="店长">店长</option>
+                                <option value="副店长">副店长</option>
+                            </select>
                         </div>
                     </div>
                     <div class="form-row">
@@ -398,6 +413,8 @@
             if (employee) {
                 document.getElementById('modalTitle').textContent = '编辑员工';
                 document.getElementById('recordId').value = employee.recordId;
+                document.getElementById('employeeId').value = employee.employeeId || '';
+                document.getElementById('employeeId').disabled = true;
                 document.getElementById('name').value = employee.name;
                 document.getElementById('employeeNo').value = employee.employeeNo || '';
                 document.getElementById('role').value = employee.role || '普通员工';
@@ -408,6 +425,7 @@
                 document.getElementById('modalTitle').textContent = '添加员工';
                 form.reset();
                 document.getElementById('recordId').value = '';
+                document.getElementById('employeeId').disabled = false;
             }
             
             modal.classList.add('active');
@@ -429,6 +447,7 @@
         async function saveEmployee() {
             const recordId = document.getElementById('recordId').value;
             const data = {
+                employeeId: document.getElementById('employeeId').value,
                 name: document.getElementById('name').value,
                 employeeNo: document.getElementById('employeeNo').value,
                 role: document.getElementById('role').value,
@@ -437,8 +456,8 @@
                 status: document.getElementById('status').value
             };
 
-            if (!data.name) {
-                showToast('姓名不能为空', 'error');
+            if (!data.employeeId || !data.name) {
+                showToast('员工ID和姓名不能为空', 'error');
                 return;
             }
 

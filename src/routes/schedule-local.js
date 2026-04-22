@@ -225,4 +225,132 @@ router.delete('/:recordId', async (req, res) => {
   try {
     const { recordId } = req.params;
     scheduleStore.delete(recordId);
-    res.json({ success: true,
+    res.json({ success: true, message: '排班删除成功' });
+  } catch (error) {
+    console.error('删除排班失败:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// 复制上期排班
+router.post('/copy', async (req, res) => {
+  try {
+    const { sourceWeekStart, targetWeekStart } = req.body;
+    
+    if (!sourceWeekStart || !targetWeekStart) {
+      return res.status(400).json({ success: false, message: '源周和目标周起始日期不能为空' });
+    }
+
+    const sourceStart = moment(sourceWeekStart);
+    const sourceEnd = moment(sourceWeekStart).add(6, 'days');
+    
+    // 获取源周排班
+    const sourceData = scheduleStore.list({
+      startDate: sourceStart.format('YYYY-MM-DD'),
+      endDate: sourceEnd.format('YYYY-MM-DD')
+    });
+
+    if (!sourceData.items || sourceData.items.length === 0) {
+      return res.status(404).json({ success: false, message: '源周没有排班数据' });
+    }
+
+    // 计算日期差
+    const dayDiff = moment(targetWeekStart).diff(sourceStart, 'days');
+    
+    // 创建新排班
+    const recordIds = [];
+    for (const item of sourceData.items) {
+      const newDate = moment(item.fields['日期']).add(dayDiff, 'days');
+      const fields = {
+        '排班ID': `SCH${newDate.format('YYYYMMDD')}${Math.random().toString(36).substr(2, 5).toUpperCase()}`,
+        '日期': newDate.valueOf(),
+        '门店': item.fields['门店'],
+        '出发时间': item.fields['出发时间'],
+        '开始时间': item.fields['开始时间'],
+        '结束时间': item.fields['结束时间'],
+        '车辆': item.fields['车辆'],
+        '出社区分': item.fields['出社区分'],
+        '退社区分': item.fields['退社区分'],
+        '分配人员': item.fields['分配人员'] || [],
+        '编组人数': item.fields['分配人员']?.length || 0,
+        '预测金额': item.fields['预测金额'] || 0,
+        '预测件数': item.fields['预测件数'] || 0,
+        '预测数量': item.fields['预测数量'] || 0,
+        '现店铺HR': item.fields['现店铺HR'] || 0,
+        '目标P/H': item.fields['目标P/H'] || 0
+      };
+      const data = scheduleStore.create(fields);
+      recordIds.push(data.record.record_id);
+    }
+    
+    res.json({
+      success: true,
+      message: `成功复制 ${recordIds.length} 条排班`,
+      data: {
+        sourceWeek: sourceWeekStart,
+        targetWeek: targetWeekStart,
+        copiedCount: recordIds.length
+      }
+    });
+  } catch (error) {
+    console.error('复制排班失败:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// 获取周视图数据
+router.get('/view/weekly', async (req, res) => {
+  try {
+    const { weekStart } = req.query;
+    
+    if (!weekStart) {
+      return res.status(400).json({ success: false, message: '周起始日期不能为空' });
+    }
+
+    const start = moment(weekStart);
+    const end = moment(weekStart).add(6, 'days');
+    
+    const data = scheduleStore.list({
+      startDate: start.format('YYYY-MM-DD'),
+      endDate: end.format('YYYY-MM-DD')
+    });
+
+    // 按日期分组
+    const weeklyData = {};
+    for (let i = 0; i < 7; i++) {
+      const date = moment(weekStart).add(i, 'days').format('YYYY-MM-DD');
+      weeklyData[date] = [];
+    }
+
+    data.items?.forEach(item => {
+      const date = moment(item.fields['日期']).format('YYYY-MM-DD');
+      if (weeklyData[date]) {
+        weeklyData[date].push({
+          recordId: item.record_id,
+          scheduleId: item.fields['排班ID'],
+          storeId: item.fields['门店'],
+          departureTime: item.fields['出发时间'],
+          startTime: item.fields['开始时间'],
+          endTime: item.fields['结束时间'],
+          vehicle: item.fields['车辆'],
+          assignedEmployees: item.fields['分配人员'] || [],
+          memberCount: item.fields['编组人数']
+        });
+      }
+    });
+
+    res.json({
+      success: true,
+      data: {
+        weekStart: start.format('YYYY-MM-DD'),
+        weekEnd: end.format('YYYY-MM-DD'),
+        schedules: weeklyData
+      }
+    });
+  } catch (error) {
+    console.error('获取周视图失败:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+module.exports = router;
