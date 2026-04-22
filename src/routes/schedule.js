@@ -4,7 +4,7 @@ const moment = require('moment');
 const feishu = require('../utils/feishu');
 
 const APP_TOKEN = process.env.BITABLE_APP_TOKEN;
-const SCHEDULE_TABLE_ID = 'tblSchedule'; // 排班表ID
+const SCHEDULE_TABLE_ID = 'tblufg4Pfhe1jTaH'; // 排班表ID
 
 // 获取排班列表
 router.get('/', async (req, res) => {

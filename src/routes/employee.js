@@ -5,7 +5,7 @@ const multer = require('multer');
 const feishu = require('../utils/feishu');
 
 const APP_TOKEN = process.env.BITABLE_APP_TOKEN;
-const EMPLOYEE_TABLE_ID = 'tblEmployee'; // 员工表ID
+const EMPLOYEE_TABLE_ID = 'tblfwcIL6zINHQgx'; // 员工表ID
 
 // 配置 multer
 const upload = multer({ storage: multer.memoryStorage() });

@@ -3,7 +3,7 @@ const router = express.Router();
 const feishu = require('../utils/feishu');
 
 const APP_TOKEN = process.env.BITABLE_APP_TOKEN;
-const STORE_TABLE_ID = 'tblStore'; // 门店表ID
+const STORE_TABLE_ID = 'tblWeCC6wVxNFv3p'; // 门店表ID
 
 // 获取所有门店
 router.get('/', async (req, res) => {

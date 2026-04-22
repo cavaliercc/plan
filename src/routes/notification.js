@@ -5,9 +5,9 @@ const feishu = require('../utils/feishu');
 const { sendScheduleNotification, sendBatchScheduleNotification, sendWeeklySummary } = require('../utils/email');
 
 const APP_TOKEN = process.env.BITABLE_APP_TOKEN;
-const EMPLOYEE_TABLE_ID = 'tblEmployee';
-const SCHEDULE_TABLE_ID = 'tblSchedule';
-const STORE_TABLE_ID = 'tblStore';
+const EMPLOYEE_TABLE_ID = 'tblfwcIL6zINHQgx';
+const SCHEDULE_TABLE_ID = 'tblufg4Pfhe1jTaH';
+const STORE_TABLE_ID = 'tblWeCC6wVxNFv3p';
 
 // 发送排班通知
 router.post('/schedule', async (req, res) => {
